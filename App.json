@@ -1,0 +1,420 @@
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+  Animated,
+  StatusBar,
+  Switch,
+  Alert,
+  Modal,
+  TextInput,
+  FlatList,
+} from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons';
+
+const { width, height } = Dimensions.get('window');
+const Tab = createBottomTabNavigator();
+
+// ---------- Theme Context ----------
+const ThemeContext = createContext();
+const useTheme = () => useContext(ThemeContext);
+
+const lightTheme = {
+  background: '#F9F9FC',
+  card: '#FFFFFF',
+  text: '#1E272E',
+  subtext: '#636E72',
+  border: '#E0E0E0',
+  primary: '#6C5CE7',
+  secondary: '#FF8C42',
+  accent: '#FF5E7E',
+  success: '#27AE60',
+  progressBg: '#E0E0E0',
+};
+
+const darkTheme = {
+  background: '#121212',
+  card: '#1E1E2E',
+  text: '#EAEAEA',
+  subtext: '#A0A0A0',
+  border: '#2D2D3A',
+  primary: '#8E7BFF',
+  secondary: '#FFA05E',
+  accent: '#FF7A92',
+  success: '#2ED573',
+  progressBg: '#2D2D3A',
+};
+
+// ---------- Helper Components ----------
+const ProgressBar = ({ percentage, color, height = 8 }) => {
+  const { theme } = useTheme();
+  const [widthAnim] = useState(new Animated.Value(0));
+  useEffect(() => {
+    Animated.timing(widthAnim, {
+      toValue: percentage,
+      duration: 800,
+      useNativeDriver: false,
+    }).start();
+  }, [percentage]);
+  return (
+    <View style={[styles.progressBarBg, { backgroundColor: theme.progressBg, height }]}>
+      <Animated.View
+        style={[
+          styles.progressBarFill,
+          {
+            width: widthAnim.interpolate({
+              inputRange: [0, 100],
+              outputRange: ['0%', '100%'],
+            }),
+            backgroundColor: color,
+            height,
+          },
+        ]}
+      />
+    </View>
+  );
+};
+
+// ---------- Home Screen (Enhanced) ----------
+const HomeScreen = () => {
+  const { theme, toggleTheme, isDark } = useTheme();
+  // Health data state
+  const [steps, setSteps] = useState(5500);
+  const [stepGoal] = useState(10000);
+  const [waterGlasses, setWaterGlasses] = useState(8);
+  const [waterGoal] = useState(12);
+  const [caloriesConsumed, setCaloriesConsumed] = useState(1250);
+  const [calorieTarget] = useState(1920);
+  const [breakfastCal, setBreakfastCal] = useState(484);
+  const [lunchCal, setLunchCal] = useState(490);
+  const [dinnerCal, setDinnerCal] = useState(276);
+  const [exerciseHours] = useState(2.0);
+  const [bpm] = useState(86);
+  const [weight, setWeight] = useState(72.5);
+  const [sleepHours, setSleepHours] = useState(7.5);
+  const [stressLevel, setStressLevel] = useState(34);
+  const [streakDays] = useState(6);
+  const [showAddMealModal, setShowAddMealModal] = useState(false);
+  const [newMealCal, setNewMealCal] = useState('');
+
+  const weeklyPercentages = [110, 47, 34, 32, 79, 24, 68];
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const stepProgress = (steps / stepGoal) * 100;
+  const waterProgress = (waterGlasses / waterGoal) * 100;
+  const calorieProgress = (caloriesConsumed / calorieTarget) * 100;
+
+  const addWater = () => {
+    if (waterGlasses < waterGoal) setWaterGlasses(waterGlasses + 1);
+    else Alert.alert('Great job!', 'You reached your water goal for today 💧');
+  };
+  const addSteps = (amount) => {
+    setSteps(prev => Math.min(prev + amount, stepGoal));
+  };
+  const addMeal = () => {
+    const cal = parseInt(newMealCal);
+    if (!isNaN(cal) && cal > 0) {
+      setCaloriesConsumed(prev => prev + cal);
+      setNewMealCal('');
+      setShowAddMealModal(false);
+      Alert.alert('Meal logged', `+${cal} kcal added`);
+    } else {
+      Alert.alert('Invalid', 'Please enter a valid calorie number');
+    }
+  };
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header with Theme Toggle */}
+        <View style={styles.header}>
+          <View>
+            <Text style={[styles.greeting, { color: theme.subtext }]}>Good morning! 🌞</Text>
+            <Text style={[styles.userName, { color: theme.text }]}>Sajibur Rahman</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
+              <Ionicons name={isDark ? 'sunny' : 'moon'} size={24} color={theme.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.profileIcon}>
+              <Ionicons name="person-circle-outline" size={48} color={theme.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Step & Water Cards */}
+        <View style={styles.statsRow}>
+          <View style={[styles.statCard, { backgroundColor: theme.card }]}>
+            <MaterialCommunityIcons name="shoe-print" size={32} color={theme.secondary} />
+            <Text style={[styles.statValue, { color: theme.text }]}>{steps.toLocaleString()}</Text>
+            <Text style={[styles.statLabel, { color: theme.subtext }]}>Steps</Text>
+            <ProgressBar percentage={stepProgress} color={theme.secondary} />
+            <View style={{ flexDirection: 'row', marginTop: 10 }}>
+              <TouchableOpacity style={styles.smallButton} onPress={() => addSteps(500)}>
+                <Text style={styles.smallButtonText}>+500</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.smallButton} onPress={() => addSteps(1000)}>
+                <Text style={styles.smallButtonText}>+1000</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.statGoal, { color: theme.subtext }]}>Goal: {stepGoal.toLocaleString()}</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: theme.card }]}>
+            <MaterialCommunityIcons name="cup-water" size={32} color="#4A90E2" />
+            <Text style={[styles.statValue, { color: theme.text }]}>{waterGlasses} / {waterGoal}</Text>
+            <Text style={[styles.statLabel, { color: theme.subtext }]}>Glasses</Text>
+            <ProgressBar percentage={waterProgress} color="#4A90E2" />
+            <TouchableOpacity style={styles.addButton} onPress={addWater}>
+              <Text style={styles.addButtonText}>💧 +1 glass</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Weekly Progress Chart */}
+        <View style={[styles.section, { backgroundColor: theme.card, borderRadius: 32, marginHorizontal: 16, padding: 16 }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Weekly Progress</Text>
+            <Text style={[styles.sectionMonth, { color: theme.primary }]}>August 2025</Text>
+          </View>
+          <View style={styles.weeklyContainer}>
+            {weekDays.map((day, idx) => (
+              <View key={day} style={styles.weeklyDay}>
+                <Text style={[styles.weekDayName, { color: theme.subtext }]}>{day}</Text>
+                <View style={styles.weeklyBarWrapper}>
+                  <View
+                    style={[
+                      styles.weeklyBar,
+                      { height: Math.min(weeklyPercentages[idx], 100) * 0.8, backgroundColor: theme.primary },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.weeklyPercent, { color: theme.text }]}>{weeklyPercentages[idx]}%</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Meals Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Meals</Text>
+          <View style={styles.mealsRow}>
+            <View style={[styles.mealCard, { backgroundColor: theme.card }]}>
+              <MaterialCommunityIcons name="food-apple" size={28} color={theme.primary} />
+              <Text style={[styles.mealName, { color: theme.text }]}>Breakfast</Text>
+              <Text style={[styles.mealCal, { color: theme.primary }]}>{breakfastCal} kcal</Text>
+            </View>
+            <View style={[styles.mealCard, { backgroundColor: theme.card }]}>
+              <MaterialCommunityIcons name="food-turkey" size={28} color={theme.primary} />
+              <Text style={[styles.mealName, { color: theme.text }]}>Lunch</Text>
+              <Text style={[styles.mealCal, { color: theme.primary }]}>{lunchCal} kcal</Text>
+            </View>
+            <View style={[styles.mealCard, { backgroundColor: theme.card }]}>
+              <MaterialCommunityIcons name="food-variant" size={28} color={theme.primary} />
+              <Text style={[styles.mealName, { color: theme.text }]}>Dinner</Text>
+              <Text style={[styles.mealCal, { color: theme.primary }]}>{dinnerCal} kcal</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={[styles.addMealBtn, { backgroundColor: theme.primary }]} onPress={() => setShowAddMealModal(true)}>
+            <Text style={styles.addMealBtnText}>+ Log custom meal</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Calorie & Streak Card */}
+        <View style={[styles.calorieCard, { backgroundColor: theme.card }]}>
+          <View style={styles.calorieLeft}>
+            <Text style={[styles.streakText, { color: theme.secondary }]}>{streakDays} day streak 🔥</Text>
+            <Text style={[styles.calorieValue, { color: theme.text }]}>{caloriesConsumed} / {calorieTarget} kcal</Text>
+          </View>
+          <View style={styles.calorieRight}>
+            <ProgressBar percentage={calorieProgress} color={theme.accent} height={10} />
+            <Text style={[styles.calorieRemaining, { color: theme.accent }]}>
+              {Math.max(0, calorieTarget - caloriesConsumed)} kcal left
+            </Text>
+          </View>
+        </View>
+
+        {/* Health Metrics Row */}
+        <View style={styles.rowCards}>
+          <View style={[styles.statCard, { backgroundColor: theme.card, width: width * 0.28 }]}>
+            <MaterialCommunityIcons name="run-fast" size={28} color="#2D9CDB" />
+            <Text style={[styles.statValue, { color: theme.text, fontSize: 18 }]}>{exerciseHours}h</Text>
+            <Text style={[styles.statLabel, { color: theme.subtext }]}>Exercise</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: theme.card, width: width * 0.28 }]}>
+            <MaterialCommunityIcons name="heart-pulse" size={28} color="#EB5757" />
+            <Text style={[styles.statValue, { color: theme.text, fontSize: 18 }]}>{bpm} bpm</Text>
+            <Text style={[styles.statLabel, { color: theme.subtext }]}>Heart</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: theme.card, width: width * 0.28 }]}>
+            <MaterialCommunityIcons name="bed" size={28} color="#6FCF97" />
+            <Text style={[styles.statValue, { color: theme.text, fontSize: 18 }]}>{sleepHours}h</Text>
+            <Text style={[styles.statLabel, { color: theme.subtext }]}>Sleep</Text>
+          </View>
+        </View>
+
+        {/* BMI & Stress */}
+        <View style={styles.rowCards}>
+          <View style={[styles.statCard, { backgroundColor: theme.card, width: width * 0.44 }]}>
+            <SimpleLineIcons name="hourglass" size={26} color={theme.primary} />
+            <Text style={[styles.statValue, { color: theme.text }]}>{weight} kg</Text>
+            <Text style={[styles.statLabel, { color: theme.subtext }]}>Weight</Text>
+            <Text style={[styles.statGoal, { color: theme.subtext }]}>BMI: {(weight / (1.75 * 1.75)).toFixed(1)}</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: theme.card, width: width * 0.44 }]}>
+            <MaterialCommunityIcons name="brain" size={26} color="#FF8C42" />
+            <Text style={[styles.statValue, { color: theme.text }]}>{stressLevel}%</Text>
+            <Text style={[styles.statLabel, { color: theme.subtext }]}>Stress level</Text>
+            <ProgressBar percentage={stressLevel} color="#FF8C42" height={6} />
+          </View>
+        </View>
+
+        <View style={{ height: 80 }} />
+
+        {/* Modal for adding meal */}
+        <Modal visible={showAddMealModal} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Log Calories</Text>
+              <TextInput
+                style={[styles.input, { color: theme.text, borderColor: theme.border }]}
+                placeholder="Calories (kcal)"
+                placeholderTextColor={theme.subtext}
+                keyboardType="numeric"
+                value={newMealCal}
+                onChangeText={setNewMealCal}
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
+                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.subtext }]} onPress={() => setShowAddMealModal(false)}>
+                  <Text style={styles.modalBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.primary }]} onPress={addMeal}>
+                  <Text style={styles.modalBtnText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+// ---------- Progress Screen (Enhanced) ----------
+const ProgressScreen = () => {
+  const { theme } = useTheme();
+  const weeklySteps = [8200, 4700, 3400, 5200, 7900, 2400, 6800];
+  const weeklyWater = [6, 5, 7, 8, 10, 9, 11];
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const maxStep = Math.max(...weeklySteps);
+  const maxWater = Math.max(...weeklyWater);
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView style={styles.progressContainer}>
+        <Text style={[styles.progressTitle, { color: theme.text }]}>📊 Detailed Analytics</Text>
+        <View style={[styles.chartCard, { backgroundColor: theme.card }]}>
+          <Text style={[styles.chartTitle, { color: theme.text }]}>Daily Steps</Text>
+          {weeklySteps.map((step, idx) => (
+            <View key={idx} style={styles.chartRow}>
+              <Text style={[styles.chartDay, { color: theme.subtext }]}>{weekDays[idx]}</Text>
+              <View style={[styles.chartBarBg, { backgroundColor: theme.progressBg }]}>
+                <View style={[styles.chartBarFill, { width: `${(step / maxStep) * 100}%`, backgroundColor: theme.primary }]} />
+              </View>
+              <Text style={[styles.chartValue, { color: theme.text }]}>{step}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={[styles.chartCard, { backgroundColor: theme.card }]}>
+          <Text style={[styles.chartTitle, { color: theme.text }]}>Water Intake (glasses)</Text>
+          {weeklyWater.map((water, idx) => (
+            <View key={idx} style={styles.chartRow}>
+              <Text style={[styles.chartDay, { color: theme.subtext }]}>{weekDays[idx]}</Text>
+              <View style={[styles.chartBarBg, { backgroundColor: theme.progressBg }]}>
+                <View style={[styles.chartBarFill, { width: `${(water / maxWater) * 100}%`, backgroundColor: '#4A90E2' }]} />
+              </View>
+              <Text style={[styles.chartValue, { color: theme.text }]}>{water}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={[styles.chartCard, { backgroundColor: theme.card }]}>
+          <Text style={[styles.chartTitle, { color: theme.text }]}>Macro Distribution</Text>
+          <View style={styles.macroRow}>
+            <Text style={{ color: theme.text }}>🥩 Protein: 35%</Text>
+            <Text style={{ color: theme.text }}>🍚 Carbs: 45%</Text>
+            <Text style={{ color: theme.text }}>🥑 Fat: 20%</Text>
+          </View>
+          <ProgressBar percentage={35} color="#EB5757" />
+          <ProgressBar percentage={45} color="#F2994A" />
+          <ProgressBar percentage={20} color="#27AE60" />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+// ---------- Rewards Screen (Expanded) ----------
+const RewardsScreen = () => {
+  const { theme } = useTheme();
+  const badges = [
+    { name: '10K Steps', icon: 'walk', achieved: true, desc: 'Walk 10,000 steps in a day' },
+    { name: 'Hydration Hero', icon: 'cup-water', achieved: true, desc: 'Drink 12 glasses of water' },
+    { name: '5 Day Streak', icon: 'calendar-check', achieved: true, desc: 'Log meals for 5 days' },
+    { name: 'Calorie Master', icon: 'food-apple', achieved: false, desc: 'Stay under calorie goal for a week' },
+    { name: 'Early Bird', icon: 'weather-sunset-up', achieved: false, desc: 'Log breakfast before 8 AM' },
+    { name: 'Heart Healthy', icon: 'heart-pulse', achieved: false, desc: 'Maintain BPM under 90 for 7 days' },
+  ];
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView contentContainerStyle={styles.rewardsContainer}>
+        <Text style={[styles.progressTitle, { color: theme.text }]}>🏆 Achievements</Text>
+        {badges.map((badge, idx) => (
+          <View key={idx} style={[styles.badgeCard, { backgroundColor: theme.card }]}>
+            <MaterialCommunityIcons name={badge.icon} size={44} color={badge.achieved ? theme.primary : theme.subtext} />
+            <View style={styles.badgeInfo}>
+              <Text style={[styles.badgeName, { color: theme.text }, badge.achieved && { color: theme.success }]}>{badge.name}</Text>
+              <Text style={[styles.badgeDesc, { color: theme.subtext }]}>{badge.desc}</Text>
+              <Text style={[styles.badgeStatus, { color: badge.achieved ? theme.success : theme.accent }]}>
+                {badge.achieved ? '✅ Unlocked' : '🔒 Locked'}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+// ---------- Menu Screen (Interactive) ----------
+const MenuScreen = () => {
+  const { theme, isDark, toggleTheme } = useTheme();
+  const [notifications, setNotifications] = useState(true);
+  const [metricUnits, setMetricUnits] = useState(true);
+  const menuItems = [
+    { title: 'Profile Settings', icon: 'person-outline' },
+    { title: 'Health Connect', icon: 'fitness-outline' },
+    { title: 'Data Export', icon: 'document-text-outline' },
+    { title: 'Appearance', icon: 'color-palette-outline' },
+    { title: 'Support & Feedback', icon: 'chatbubble-outline' },
+    { title: 'Privacy Policy', icon: 'lock-closed-outline' },
+  ];
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView contentContainerStyle={styles.menuContainer}>
+        <Text style={[styles.progressTitle, { color: theme.text }]}>⚙️ Settings</Text>
+        <View style={[styles.settingItem, { backgroundColor: theme.card }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="moon" size={24} color={theme.primary} />
+            <Text style={[styles.settingText, { color: theme.text }]}>Dark Mode</Text>
+          </View>
+          <Switch value={isDark} onValueChange={toggleTheme} trackColor={{ false: '#767577', true: theme.primary }} />
+        </View>
+        <View style={[styles.settingItem, { backgroundColor: theme.card }]}>
+ 
